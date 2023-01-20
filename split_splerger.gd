@@ -37,6 +37,7 @@ static func _get_num_splits_z(si: _SplitInfo) -> int:
 # split a mesh according to the grid size
 static func split(
 	mesh_instance: MeshInstance3D,
+	surface_id: int,
 	attachment_node: Node,
 	grid_size: float,
 	grid_size_y: float,
@@ -72,7 +73,7 @@ static func split(
 	var mesh = mesh_instance.mesh
 
 	var mdt = MeshDataTool.new()
-	mdt.create_from_surface(mesh, 0)
+	mdt.create_from_surface(mesh, surface_id)
 
 	var nVerts = mdt.get_vertex_count()
 	if nVerts == 0:
@@ -98,7 +99,7 @@ static func split(
 		for y in range(si.y_splits):
 			for x in range(si.x_splits):
 				_split_mesh(
-					mdt, mesh_instance, x, y, z, si, attachment_node, faces_assigned, world_verts
+					mdt, mesh_instance, surface_id, x, y, z, si, attachment_node, faces_assigned, world_verts
 				)
 
 	return true
@@ -107,6 +108,7 @@ static func split(
 static func _split_mesh(
 	mdt: MeshDataTool,
 	orig_mi: MeshInstance3D,
+	surface_id: int,
 	grid_x: float,
 	grid_y: float,
 	grid_z: float,
@@ -140,35 +142,18 @@ static func _split_mesh(
 
 	var face_aabb: AABB
 
-#	var bDebug = false
-#	if m_bDebug_Split && (grid_x == 0) && (grid_z == 0):
-#		bDebug = true
-#	var sz = ""
-
 	var xform = orig_mi.global_transform
 
 	for f in range(nFaces):
-		#if (f % 2000) == 0:
-		#	print (".")
-		#if bDebug:
-		#	sz = "face " + str(f) + "\n"
-
 		for i in range(3):
 			var ind = mdt.get_face_vertex(f, i)
-			#var vert = mdt.get_vertex(ind)
-			#vert = xform.xform(vert)
 			var vert = world_verts[ind]
 
-			#if bDebug:
-			#	sz += "v" + str(i) + " " + str(vert) + "\n"
 
 			if i == 0:
 				face_aabb = AABB(vert, Vector3(0, 0, 0))
 			else:
 				face_aabb = face_aabb.expand(vert)
-
-		#if bDebug:
-		#	print(sz)
 
 		# does this face overlap the aabb?
 		if aabb.intersects(face_aabb):
@@ -200,18 +185,9 @@ static func _split_mesh(
 			var new_ind = _find_or_add_unique_vert(ind, unique_verts, ind_mapping)
 			new_inds.push_back(new_ind)
 
-	#print ("mapping end")
-
 	var tmpMesh = ArrayMesh.new()
 
-	#print(orig_mi.get_name() + " orig mat count " + str(orig_mi.mesh.get_surface_count()))
-	#var mat = orig_mi.get_surface_material(0)
-	var mat = orig_mi.mesh.surface_get_material(0)
-
-	#var mat = Node3DMaterial.new()
-	#mat = mat_orig
-	#var color = Color(0.1, 0.8, 0.1)
-	#mat.albedo_color = color
+	var mat = orig_mi.mesh.surface_get_material(surface_id)
 
 	var st : SurfaceTool = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -263,7 +239,8 @@ static func _split_mesh(
 	attachment_node.add_child(new_mi, true)
 	new_mi.owner = attachment_node.owner
 	
-	orig_mi.queue_free()
+	if orig_mi.mesh and orig_mi.mesh.get_surface_count() - 1 == surface_id:
+		orig_mi.queue_free()
 
 
 static func _find_or_add_unique_vert(orig_index: int, unique_verts, ind_mapping):
@@ -417,3 +394,12 @@ static func save_scene(node, filename):
 	var packed_scene = PackedScene.new()
 	packed_scene.pack(node)
 	ResourceSaver.save(packed_scene, filename)
+
+static func traverse_root_and_split(root : Node3D,
+	grid_size: float,
+	grid_size_y: float) -> void:
+	var instances : Array[Node] = root.find_children("*", "MeshInstance3D")
+	for node in instances:
+		var mesh_instance : MeshInstance3D = node
+		for surface_i in mesh_instance.mesh.get_surface_count():
+			split(mesh_instance, surface_i, mesh_instance.get_parent(), grid_size, grid_size_y)
