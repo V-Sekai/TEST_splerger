@@ -8,22 +8,17 @@ class _SplitInfo:
 	var x_splits: int = 0
 	var y_splits: int = 1
 	var z_splits: int = 0
-	var use_local_space: bool = false
-
-var m_bDebug_Split = false
 
 
 func split_branch(
 	node: Node,
 	attachment_node: Node,
-	grid_size: float = 0.64,
-	grid_size_y: float = 0.64,
-	use_local_space: bool = false
+	grid_size: float,
+	grid_size_y: float,
 ):
 	var si: _SplitInfo = _SplitInfo.new()
 	si.grid_size = grid_size
 	si.grid_size_y = grid_size_y
-	si.use_local_space = use_local_space
 
 	var meshlist = []
 	var splitlist = []
@@ -37,27 +32,26 @@ func split_branch(
 	for m in range(meshlist.size()):
 		print("mesh " + meshlist[m].get_name())
 
-		if split(meshlist[m], attachment_node, grid_size, grid_size_y, use_local_space) == true:
+		if split(meshlist[m], attachment_node, grid_size, grid_size_y) == true:
 			splitlist[m] = true
 
 	for m in range(meshlist.size()):
 		if splitlist[m] == true:
 			var mi = meshlist[m]
 			mi.get_parent().remove_child(mi)
-			#mi.queue_delete()
+			mi.queue_delete()
 
 	print("split_branch FINISHED.")
-	pass
 
 
-func _get_num_splits_x(si: _SplitInfo) -> int:
+static func _get_num_splits_x(si: _SplitInfo) -> int:
 	var splits = int(floor(si.aabb.size.x / si.grid_size))
 	if splits < 1:
 		splits = 1
 	return splits
 
 
-func _get_num_splits_y(si: _SplitInfo) -> int:
+static func _get_num_splits_y(si: _SplitInfo) -> int:
 	if si.grid_size_y <= 0.00001:
 		return 1
 
@@ -67,7 +61,7 @@ func _get_num_splits_y(si: _SplitInfo) -> int:
 	return splits
 
 
-func _get_num_splits_z(si: _SplitInfo) -> int:
+static func _get_num_splits_z(si: _SplitInfo) -> int:
 	var splits = int(floor(si.aabb.size.z / si.grid_size))
 	if splits < 1:
 		splits = 1
@@ -98,19 +92,16 @@ func _find_meshes_recursive(node: Node, meshlist, si: _SplitInfo):
 
 
 # split a mesh according to the grid size
-func split(
+static func split(
 	mesh_instance: MeshInstance3D,
 	attachment_node: Node,
 	grid_size: float,
 	grid_size_y: float,
-	use_local_space: bool = false,
-	delete_orig: bool = false
 ):
 	# save all the info we can into a class to avoid passing it around
 	var si: _SplitInfo = _SplitInfo.new()
 	si.grid_size = grid_size
 	si.grid_size_y = grid_size_y
-	si.use_local_space = use_local_space
 
 	# calculate the AABB
 	si.aabb = _calc_aabb(mesh_instance)
@@ -170,11 +161,7 @@ func split(
 	return true
 
 
-#class UniqueVert:
-#	var m_OrigInd : int
-
-
-func _split_mesh(
+static func _split_mesh(
 	mdt: MeshDataTool,
 	orig_mi: MeshInstance3D,
 	grid_x: float,
@@ -200,8 +187,7 @@ func _split_mesh(
 	# godot intersection doesn't work on borders ...
 	aabb = aabb.grow(0.1)
 
-	if m_bDebug_Split:
-		print("\tAABB : " + str(aabb))
+	print("\tAABB : " + str(aabb))
 
 	var nVerts = mdt.get_vertex_count()
 	var nFaces = mdt.get_face_count()
@@ -298,12 +284,6 @@ func _split_mesh(
 #		var uv2 = mdt.get_vertex_uv2(n)
 #		var tang = mdt.get_vertex_tangent(n)
 
-		if si.use_local_space == false:
-			vert = xform * vert
-			norm = xform.basis * norm
-			norm = norm.normalized()
-#			tang = xform.basis * tang
-
 		if norm:
 			st.set_normal(norm)
 		if col:
@@ -333,15 +313,14 @@ func _split_mesh(
 
 	new_mi.set_name(orig_mi.get_name() + "_" + str(grid_x) + str(grid_z))
 
-	if si.use_local_space:
-		new_mi.transform = orig_mi.transform
+	new_mi.transform = orig_mi.transform
 
 	# add the new mesh as a child
-	attachment_node.add_child(new_mi)
+	attachment_node.add_child(new_mi, true)
 	new_mi.owner = attachment_node.owner
 
 
-func _find_or_add_unique_vert(orig_index: int, unique_verts, ind_mapping):
+static func _find_or_add_unique_vert(orig_index: int, unique_verts, ind_mapping):
 	# already exists in unique verts
 	if ind_mapping[orig_index] != -1:
 		return ind_mapping[orig_index]
@@ -354,36 +333,6 @@ func _find_or_add_unique_vert(orig_index: int, unique_verts, ind_mapping):
 	ind_mapping[orig_index] = new_index
 
 	return new_index
-
-
-static func split_by_surface(
-	orig_mi: MeshInstance3D, attachment_node: Node, use_local_space: bool = false
-):
-	print("split_by_surface " + orig_mi.get_name())
-
-	var mesh = orig_mi.mesh
-
-	var surface_count : int = mesh.get_surface_count()
-	
-	for s in range(surface_count):
-		var mdt = MeshDataTool.new()
-		mdt.create_from_surface(mesh, s)
-
-		var nVerts = mdt.get_vertex_count()
-		if not nVerts:
-			continue
-
-		_split_mesh_by_surface(mdt, orig_mi, attachment_node, s, use_local_space)
-
-	# delete orig mesh
-	orig_mi.get_parent().remove_child(orig_mi)
-#	orig_mi.queue_delete()
-
-
-static func split_multi_surface_meshes(node: Node):
-	var children : Array[Node] = node.find_children("*", "MeshInstance3D")
-	for mesh_instance_3d in children:
-		split_by_surface(mesh_instance_3d, mesh_instance_3d.get_parent())
 
 
 func _list_mesh_instances(node, list):
@@ -430,7 +379,6 @@ static func _split_mesh_by_surface(
 	orig_mi: MeshInstance3D,
 	attachment_node: Node,
 	surf_id: int,
-	use_local_space: bool
 ):
 	var nVerts = mdt.get_vertex_count()
 	var nFaces = mdt.get_face_count()
@@ -452,12 +400,6 @@ static func _split_mesh_by_surface(
 		var uv = mdt.get_vertex_uv(n)
 #		var uv2 = mdt.get_vertex_uv2(n)
 #		var tang = mdt.get_vertex_tangent(n)
-
-		if use_local_space == false:
-			vert = xform * vert
-			norm = xform.basis * norm
-			norm = norm.normalized()
-#			tang = xform.basis * tang
 
 		if norm:
 			st.set_normal(norm)
@@ -484,8 +426,7 @@ static func _split_mesh_by_surface(
 	if new_mi.mesh.get_surface_count():		
 		new_mi.set_surface_override_material(0, mat)
 
-	if use_local_space:
-		new_mi.transform = orig_mi.transform
+	new_mi.transform = orig_mi.transform
 
 	var sz = orig_mi.get_name() + "_" + str(surf_id)
 	if mat:
@@ -494,18 +435,20 @@ static func _split_mesh_by_surface(
 	new_mi.set_name(sz)
 
 	# add the new mesh as a child
-	attachment_node.add_child(new_mi)
+	attachment_node.add_child(new_mi, true)
 	new_mi.owner = attachment_node.owner
 
 
-func _check_aabb(aabb: AABB):
+static func _check_aabb(aabb: AABB):
 	assert(aabb.size.x >= 0)
 	assert(aabb.size.y >= 0)
 	assert(aabb.size.z >= 0)
 
 
-func _calc_aabb(mesh_instance: MeshInstance3D):
-	var aabb: AABB = mesh_instance.get_transformed_aabb()
+static func _calc_aabb(mesh_instance: MeshInstance3D):
+	if not mesh_instance.mesh:
+		return AABB()
+	var aabb: AABB = mesh_instance.global_transform * mesh_instance.mesh.get_aabb()
 	# godot intersection doesn't work on borders ...
 	aabb = aabb.grow(0.1)
 	return aabb
