@@ -231,7 +231,6 @@ static func _split_mesh(
 
 	new_mi.set_name(orig_mi.get_name() + "_" + str(grid_x) + str(grid_z))
 
-	new_mi.transform = orig_mi.transform
 	new_mi.skeleton = orig_mi.skeleton
 	new_mi.skin = orig_mi.skin
 
@@ -314,7 +313,7 @@ static func _split_mesh_by_surface(
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.set_material(mat)
 
-	var xform = orig_mi.global_transform
+	var xform_inverse = orig_mi.global_transform.affine_inverse()
 
 	for n in mdt.get_vertex_count():
 		var vert = mdt.get_vertex(n)
@@ -326,17 +325,17 @@ static func _split_mesh_by_surface(
 		var bone_weights = mdt.get_vertex_weights(n)
 
 		if norm:
-			st.set_normal(norm)
+			st.set_normal(xform_inverse.basis * norm)
 		if col:
 			st.set_color(col)
 		if uv:
 			st.set_uv(uv)
 		if tang:
-			st.set_tangent(tang)
+			st.set_tangent(xform_inverse.basis * tang)
 		if bones.size():
 			st.set_bones(bones)
 			st.set_weights(bone_weights)
-		st.add_vertex(vert)
+		st.add_vertex(xform_inverse * vert)
 
 	for f in mdt.get_face_count():
 		for i in range(3):
@@ -347,7 +346,11 @@ static func _split_mesh_by_surface(
 
 	var new_mi = MeshInstance3D.new()
 	new_mi.mesh = tmpMesh
-	
+	if orig_mi.get_parent_node_3d():
+		new_mi.global_transform = orig_mi.get_parent_node_3d().global_transform.affine_inverse() * orig_mi.global_transform
+	else:
+		new_mi.global_transform = orig_mi.global_transform
+
 	if new_mi.mesh.get_surface_count():		
 		new_mi.set_surface_override_material(0, mat)
 
