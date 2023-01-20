@@ -224,7 +224,6 @@ static func _split_mesh(
 		var norm = mdt.get_vertex_normal(n)
 		var col = mdt.get_vertex_color(n)
 		var uv = mdt.get_vertex_uv(n)
-		var uv2 = mdt.get_vertex_uv2(n)
 		var tang = mdt.get_vertex_tangent(n)
 		var bones = mdt.get_vertex_bones(n)
 		var bone_weights = mdt.get_vertex_weights(n)
@@ -235,8 +234,6 @@ static func _split_mesh(
 			st.set_color(col)
 		if uv:
 			st.set_uv(uv)
-		if uv2:
-			st.set_uv2(uv2)
 		if tang:
 			st.set_tangent(tang)
 		if bones.size():
@@ -347,7 +344,6 @@ static func _split_mesh_by_surface(
 		var norm = mdt.get_vertex_normal(n)
 		var col = mdt.get_vertex_color(n)
 		var uv = mdt.get_vertex_uv(n)
-		var uv2 = mdt.get_vertex_uv2(n)
 		var tang = mdt.get_vertex_tangent(n)
 		var bones = mdt.get_vertex_bones(n)
 		var bone_weights = mdt.get_vertex_weights(n)
@@ -358,8 +354,6 @@ static func _split_mesh_by_surface(
 			st.set_color(col)
 		if uv:
 			st.set_uv(uv)
-		if uv2:
-			st.set_uv2(uv2)
 		if tang:
 			st.set_tangent(tang)
 		if bones.size():
