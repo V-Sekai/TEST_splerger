@@ -10,40 +10,6 @@ class _SplitInfo:
 	var z_splits: int = 0
 
 
-func split_branch(
-	node: Node,
-	attachment_node: Node,
-	grid_size: float,
-	grid_size_y: float,
-):
-	var si: _SplitInfo = _SplitInfo.new()
-	si.grid_size = grid_size
-	si.grid_size_y = grid_size_y
-
-	var meshlist = []
-	var splitlist = []
-
-	_find_meshes_recursive(node, meshlist, si)
-
-	# record which meshes have been successfully split .. for these we will
-	# remove the original mesh
-	splitlist.resize(meshlist.size())
-
-	for m in range(meshlist.size()):
-		print("mesh " + meshlist[m].get_name())
-
-		if split(meshlist[m], attachment_node, grid_size, grid_size_y) == true:
-			splitlist[m] = true
-
-	for m in range(meshlist.size()):
-		if splitlist[m] == true:
-			var mi = meshlist[m]
-			mi.get_parent().remove_child(mi)
-			mi.queue_delete()
-
-	print("split_branch FINISHED.")
-
-
 static func _get_num_splits_x(si: _SplitInfo) -> int:
 	var splits = int(floor(si.aabb.size.x / si.grid_size))
 	if splits < 1:
@@ -66,29 +32,6 @@ static func _get_num_splits_z(si: _SplitInfo) -> int:
 	if splits < 1:
 		splits = 1
 	return splits
-
-
-func _find_meshes_recursive(node: Node, meshlist, si: _SplitInfo):
-	# is it a mesh?
-	if node is MeshInstance3D:
-		var mi: MeshInstance3D = node as MeshInstance3D
-		si.aabb = _calc_aabb(mi)
-		print("mesh " + mi.get_name() + "\n\tAABB " + str(si.aabb))
-
-		var splits_x = _get_num_splits_x(si)
-		var splits_y = _get_num_splits_y(si)
-		var splits_z = _get_num_splits_z(si)
-
-		if (splits_x + splits_y + splits_z) > 3:
-			meshlist.push_back(mi)
-			print("\tfound mesh to split : " + mi.get_name())
-			print(
-				"\t\tsplits_x : " + str(splits_x) + " _y " + str(splits_y) + " _z " + str(splits_z)
-			)
-			#print("\tAABB is " + str(aabb))
-
-	for c in range(node.get_child_count()):
-		_find_meshes_recursive(node.get_child(c), meshlist, si)
 
 
 # split a mesh according to the grid size
@@ -281,8 +224,10 @@ static func _split_mesh(
 		var norm = mdt.get_vertex_normal(n)
 		var col = mdt.get_vertex_color(n)
 		var uv = mdt.get_vertex_uv(n)
-#		var uv2 = mdt.get_vertex_uv2(n)
-#		var tang = mdt.get_vertex_tangent(n)
+		var uv2 = mdt.get_vertex_uv2(n)
+		var tang = mdt.get_vertex_tangent(n)
+		var bones = mdt.get_vertex_bones(n)
+		var bone_weights = mdt.get_vertex_weights(n)
 
 		if norm:
 			st.set_normal(norm)
@@ -290,18 +235,18 @@ static func _split_mesh(
 			st.set_color(col)
 		if uv:
 			st.set_uv(uv)
-#		if uv2:
-#			st.set_uv2(uv2)
-#		if tang:
-#			st.set_tangent(tang)
+		if uv2:
+			st.set_uv2(uv2)
+		if tang:
+			st.set_tangent(tang)
+		if bones.size():
+			st.set_bones(bones)
+			st.set_weights(bone_weights)
 
 		st.add_vertex(vert)
 
-	# indices
 	for i in new_inds.size():
 		st.add_index(new_inds[i])
-
-	#print ("commit start")
 
 	st.commit(tmpMesh)
 
@@ -314,10 +259,14 @@ static func _split_mesh(
 	new_mi.set_name(orig_mi.get_name() + "_" + str(grid_x) + str(grid_z))
 
 	new_mi.transform = orig_mi.transform
+	new_mi.skeleton = orig_mi.skeleton
+	new_mi.skin = orig_mi.skin
 
 	# add the new mesh as a child
 	attachment_node.add_child(new_mi, true)
 	new_mi.owner = attachment_node.owner
+	
+	orig_mi.queue_free()
 
 
 static func _find_or_add_unique_vert(orig_index: int, unique_verts, ind_mapping):
@@ -398,8 +347,10 @@ static func _split_mesh_by_surface(
 		var norm = mdt.get_vertex_normal(n)
 		var col = mdt.get_vertex_color(n)
 		var uv = mdt.get_vertex_uv(n)
-#		var uv2 = mdt.get_vertex_uv2(n)
-#		var tang = mdt.get_vertex_tangent(n)
+		var uv2 = mdt.get_vertex_uv2(n)
+		var tang = mdt.get_vertex_tangent(n)
+		var bones = mdt.get_vertex_bones(n)
+		var bone_weights = mdt.get_vertex_weights(n)
 
 		if norm:
 			st.set_normal(norm)
@@ -407,10 +358,13 @@ static func _split_mesh_by_surface(
 			st.set_color(col)
 		if uv:
 			st.set_uv(uv)
-#		if uv2:
-#			st.set_uv2(uv2)
-#		if tang:
-#			st.set_tangent(tang)
+		if uv2:
+			st.set_uv2(uv2)
+		if tang:
+			st.set_tangent(tang)
+		if bones.size():
+			st.set_bones(bones)
+			st.set_weights(bone_weights)
 		st.add_vertex(vert)
 
 	for f in mdt.get_face_count():
