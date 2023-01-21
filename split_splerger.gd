@@ -136,13 +136,11 @@ static func _split_mesh(
 
 	var nVerts = mdt.get_vertex_count()
 	var nFaces = mdt.get_face_count()
-
+	
 	# find all faces that overlap the new aabb and add them to a new mesh
 	var faces = []
 
 	var face_aabb: AABB
-
-	var xform = orig_mi.global_transform
 
 	for f in range(nFaces):
 		for i in range(3):
@@ -166,12 +164,9 @@ static func _split_mesh(
 		print("\tno faces, ignoring...")
 		return
 
-	# find unique verts
 	var new_inds = []
 	var unique_verts = []
 
-	#print ("mapping start")
-	# use a mapping of original to unique indices to speed up finding unique verts
 	var ind_mapping = []
 	ind_mapping.resize(mdt.get_vertex_count())
 	for i in range(mdt.get_vertex_count()):
@@ -192,7 +187,7 @@ static func _split_mesh(
 	var st : SurfaceTool = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.set_material(mat)
-
+	
 	for u in unique_verts.size():
 		var n = unique_verts[u]
 
@@ -200,28 +195,26 @@ static func _split_mesh(
 		var norm = mdt.get_vertex_normal(n)
 		var col = mdt.get_vertex_color(n)
 		var uv = mdt.get_vertex_uv(n)
-		var tang = mdt.get_vertex_tangent(n)
 		var bones = mdt.get_vertex_bones(n)
 		var bone_weights = mdt.get_vertex_weights(n)
 
 		if norm:
-			st.set_normal(norm)
+				st.set_normal(norm)
 		if col:
 			st.set_color(col)
 		if uv:
 			st.set_uv(uv)
-		if tang:
-			st.set_tangent(tang)
 		if bones.size():
 			st.set_bones(bones)
 			st.set_weights(bone_weights)
 
 		st.add_vertex(vert)
-
+	
 	for i in new_inds.size():
 		st.add_index(new_inds[i])
 
 	st.commit(tmpMesh)
+	st.generate_tangents()
 
 	var new_mi : MeshInstance3D = MeshInstance3D.new()
 	new_mi.mesh = tmpMesh
@@ -233,7 +226,6 @@ static func _split_mesh(
 
 	new_mi.skeleton = orig_mi.skeleton
 	new_mi.skin = orig_mi.skin
-
 	# add the new mesh as a child
 	attachment_node.add_child(new_mi, true)
 	new_mi.owner = attachment_node.owner
@@ -255,113 +247,6 @@ static func _find_or_add_unique_vert(orig_index: int, unique_verts, ind_mapping)
 	ind_mapping[orig_index] = new_index
 
 	return new_index
-
-
-func _list_mesh_instances(node, list):
-	if node is MeshInstance3D:
-		if node.get_child_count() == 0:
-			var mi: MeshInstance3D = node
-			if mi.get_surface_material_count() <= 1:
-				list.push_back(node)
-
-	for c in range(node.get_child_count()):
-		_list_mesh_instances(node.get_child(c), list)
-
-
-func _find_suitable_meshes(child_list, node: Node):
-	# don't want to merge meshes with children
-	if node.get_child_count():
-		return
-
-	if node is MeshInstance3D:
-		var mi: MeshInstance3D = node
-		# must have only one surface
-		if mi.get_surface_material_count() <= 1:
-			print("found mesh instance " + mi.get_name())
-
-			var mat_this = mi.mesh.surface_get_material(0)
-
-			if child_list.size() == 0:
-				if mat_this:
-					print("\tadding first to list")
-					child_list.push_back(mi)
-				return
-
-			# already exists in child list
-			# must be compatible meshes
-			var mat_existing = child_list[0].mesh.surface_get_material(0)
-
-			if mat_this == mat_existing:
-				print("\tadding to list")
-				child_list.push_back(mi)
-
-
-static func _split_mesh_by_surface(
-	mdt: MeshDataTool,
-	orig_mi: MeshInstance3D,
-	attachment_node: Node,
-	surf_id: int,
-):
-	var nVerts = mdt.get_vertex_count()
-	var nFaces = mdt.get_face_count()
-
-	var tmpMesh = ArrayMesh.new()
-
-	var mat = orig_mi.mesh.surface_get_material(surf_id)
-
-	var st = SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	st.set_material(mat)
-
-	var xform = orig_mi.global_transform.affine_inverse()
-
-	for n in mdt.get_vertex_count():
-		var vert = mdt.get_vertex(n)
-		var norm = mdt.get_vertex_normal(n)
-		var col = mdt.get_vertex_color(n)
-		var uv = mdt.get_vertex_uv(n)
-		var tang = mdt.get_vertex_tangent(n)
-		var bones = mdt.get_vertex_bones(n)
-		var bone_weights = mdt.get_vertex_weights(n)
-
-		if norm:
-			st.set_normal(norm)
-		if col:
-			st.set_color(col)
-		if uv:
-			st.set_uv(uv)
-		if tang:
-			st.set_tangent(tang)
-		if bones.size():
-			st.set_bones(bones)
-			st.set_weights(bone_weights)
-		st.add_vertex(vert)
-
-	for f in mdt.get_face_count():
-		for i in range(3):
-			var ind = mdt.get_face_vertex(f, i)
-			st.add_index(ind)
-
-	st.commit(tmpMesh)
-
-	var new_mi = MeshInstance3D.new()
-	new_mi.mesh = tmpMesh
-	new_mi.global_transform = orig_mi.global_transform
-
-	if new_mi.mesh.get_surface_count():		
-		new_mi.set_surface_override_material(0, mat)
-
-	new_mi.transform = orig_mi.transform
-
-	var sz = orig_mi.get_name() + "_" + str(surf_id)
-	if mat:
-		if mat.resource_name != "":
-			sz += "_" + mat.resource_name
-	new_mi.set_name(sz)
-
-	# add the new mesh as a child
-	attachment_node.add_child(new_mi, true)
-	new_mi.owner = attachment_node.owner
 
 
 static func _check_aabb(aabb: AABB):
@@ -396,8 +281,8 @@ static func save_scene(node, filename):
 	ResourceSaver.save(packed_scene, filename)
 
 static func traverse_root_and_split(root : Node3D,
-	grid_size: float,
-	grid_size_y: float) -> void:
+	grid_size: float = 0.64,
+	grid_size_y: float = 0.64) -> void:
 	var instances : Array[Node] = root.find_children("*", "MeshInstance3D")
 	for node in instances:
 		var mesh_instance : MeshInstance3D = node
