@@ -202,8 +202,7 @@ static func _split_mesh(
 				st.set_normal(norm)
 		if col:
 			st.set_color(col)
-		if uv:
-			st.set_uv(uv)
+		st.set_uv(uv)
 		if bones.size():
 			st.set_bones(bones)
 			st.set_weights(bone_weights)
