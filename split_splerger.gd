@@ -188,22 +188,44 @@ static func _split_mesh(
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.set_material(mat)
 	
+	var is_normal : bool = false
+	var is_tangent : bool = false
+	var is_color : bool = false
+	var is_uv : bool = false
+	var is_bones : bool = false
+	var is_bone_weights : bool = false
+	
+	if unique_verts.size():
+		var n = unique_verts[0]
+		is_normal = mdt.get_vertex_normal(n) != Vector3()
+		is_tangent = mdt.get_vertex_tangent(n) != Plane()
+		is_color = mdt.get_vertex_color(n) != Color()
+		is_uv = mdt.get_vertex_uv(n) != Vector2()
+		is_bones = mdt.get_vertex_bones(n).size()
+		is_bone_weights = mdt.get_vertex_weights(n).size()
+			
 	for u in unique_verts.size():
 		var n = unique_verts[u]
 
 		var vert = mdt.get_vertex(n)
 		var norm = mdt.get_vertex_normal(n)
+		var tangent = mdt.get_vertex_tangent(n)
 		var col = mdt.get_vertex_color(n)
 		var uv = mdt.get_vertex_uv(n)
 		var bones = mdt.get_vertex_bones(n)
 		var bone_weights = mdt.get_vertex_weights(n)
 
-		if norm:
-				st.set_normal(norm)
-		if col:
+			
+		if is_normal:
+			st.set_normal(norm)
+		if is_color:
 			st.set_color(col)
-		st.set_uv(uv)
-		if bones.size():
+		if is_uv:
+			st.set_uv(uv)
+		if is_tangent:
+			print(tangent)
+			return
+		if is_bones:
 			st.set_bones(bones)
 			st.set_weights(bone_weights)
 
@@ -211,9 +233,10 @@ static func _split_mesh(
 	
 	for i in new_inds.size():
 		st.add_index(new_inds[i])
-
-	st.commit(tmpMesh)
+	
+	st.generate_normals()
 	st.generate_tangents()
+	st.commit(tmpMesh)
 
 	var new_mi : MeshInstance3D = MeshInstance3D.new()
 	new_mi.mesh = tmpMesh
