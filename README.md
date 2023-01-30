@@ -1,5 +1,5 @@
 # godot-splerger
-Mesh splitting and merging script for Godot 3.2
+Mesh Grid splitting and merging script for Godot 4. The splerger trades increased draw calls for culling guarantees. 
 
 ## Installation
 Either install as an addon, or simply copy splerger.gd to your project, and it should be available to use.
