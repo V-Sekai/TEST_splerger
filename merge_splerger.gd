@@ -2,7 +2,7 @@ extends RefCounted
 
 
 static func merge_suitable_meshes_across_branches(root: Node3D):
-	var master_list : Array[MeshInstance3D]= []
+	var master_list: Array[MeshInstance3D] = []
 	_list_mesh_instances(root, master_list)
 
 	var mat_list = []
@@ -11,7 +11,7 @@ static func merge_suitable_meshes_across_branches(root: Node3D):
 	# identify materials
 	for n in range(master_list.size()):
 		var mat
-		var mesh_instance : MeshInstance3D = master_list[n]
+		var mesh_instance: MeshInstance3D = master_list[n]
 		if mesh_instance.mesh.get_surface_count() > 0:
 			mat = mesh_instance.get_active_material(0)
 
@@ -36,7 +36,7 @@ static func merge_suitable_meshes_across_branches(root: Node3D):
 
 	# at this point the sub lists are complete, and we can start merging them
 	for n in range(sub_list.size()):
-		var sl : Array[MeshInstance3D] = sub_list[n]
+		var sl: Array[MeshInstance3D] = sub_list[n]
 
 		if sl.size() > 1:
 			var new_mi: MeshInstance3D = merge_meshinstances(sl, root)
@@ -48,7 +48,7 @@ static func merge_suitable_meshes_across_branches(root: Node3D):
 			new_mi.transform = tr
 
 
-static func _list_mesh_instances(node : Node, list : Array[MeshInstance3D]):
+static func _list_mesh_instances(node: Node, list: Array[MeshInstance3D]):
 	if node is MeshInstance3D:
 		if node.get_child_count() == 0:
 			var mi: MeshInstance3D = node
@@ -60,7 +60,10 @@ static func _list_mesh_instances(node : Node, list : Array[MeshInstance3D]):
 
 
 static func merge_meshinstances(
-	mesh_array : Array[MeshInstance3D], attachment_node: Node, use_local_space: bool = false, delete_originals: bool = true
+	mesh_array: Array[MeshInstance3D],
+	attachment_node: Node,
+	use_local_space: bool = false,
+	delete_originals: bool = true
 ) -> MeshInstance3D:
 	if mesh_array.size() < 2:
 		printerr("merge_meshinstances array must contain at least 2 meshes")
@@ -103,22 +106,20 @@ static func merge_meshinstances(
 	# add the new mesh as a child
 	attachment_node.add_child(new_mi)
 	new_mi.owner = attachment_node
-	
+
 	if delete_originals:
-		for n in range (mesh_array.size()):
+		for n in range(mesh_array.size()):
 			var mi = mesh_array[n]
 			var parent = mi.get_parent()
 			if parent:
 				parent.remove_child(mi)
 			mi.queue_free()
-			
+
 	# return the new mesh instance as it can be useful to change transform
 	return new_mi
 
 
-static func _merge_meshinstance(
-	st: SurfaceTool, mi: MeshInstance3D, use_local_space: bool, vertex_count: int
-):
+static func _merge_meshinstance(st: SurfaceTool, mi: MeshInstance3D, use_local_space: bool, vertex_count: int):
 	if mi == null:
 		printerr("_merge_meshinstance - not a mesh instance, ignoring")
 		return vertex_count
@@ -173,6 +174,7 @@ static func _merge_meshinstance(
 	# new running vertex count
 	return vertex_count + nVerts
 
+
 func _check_aabb(aabb: AABB):
 	assert(aabb.size.x >= 0)
 	assert(aabb.size.y >= 0)
@@ -184,12 +186,14 @@ func _calc_aabb(mesh_instance: MeshInstance3D):
 	# godot intersection doesn't work on borders ...
 	aabb = aabb.grow(0.1)
 	return aabb
-	
 
-static func traverse_root_and_merge(root : Node3D,) -> void:
-	var instances : Array[Node] = root.find_children("*", "MeshInstance3D")
-	
-	var mesh_instances : Array[MeshInstance3D]
+
+static func traverse_root_and_merge(
+	root: Node3D,
+) -> void:
+	var instances: Array[Node] = root.find_children("*", "MeshInstance3D")
+
+	var mesh_instances: Array[MeshInstance3D]
 	if instances.size() == 1:
 		return
 	for instance in instances:

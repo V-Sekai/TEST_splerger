@@ -98,9 +98,7 @@ static func split(
 	for z in range(si.z_splits):
 		for y in range(si.y_splits):
 			for x in range(si.x_splits):
-				_split_mesh(
-					mdt, mesh_instance, surface_id, x, y, z, si, attachment_node, faces_assigned, world_verts
-				)
+				_split_mesh(mdt, mesh_instance, surface_id, x, y, z, si, attachment_node, faces_assigned, world_verts)
 
 	return true
 
@@ -136,7 +134,7 @@ static func _split_mesh(
 
 	var nVerts = mdt.get_vertex_count()
 	var nFaces = mdt.get_face_count()
-	
+
 	# find all faces that overlap the new aabb and add them to a new mesh
 	var faces = []
 
@@ -146,7 +144,6 @@ static func _split_mesh(
 		for i in range(3):
 			var ind = mdt.get_face_vertex(f, i)
 			var vert = world_verts[ind]
-
 
 			if i == 0:
 				face_aabb = AABB(vert, Vector3(0, 0, 0))
@@ -184,17 +181,17 @@ static func _split_mesh(
 
 	var mat = orig_mi.mesh.surface_get_material(surface_id)
 
-	var st : SurfaceTool = SurfaceTool.new()
+	var st: SurfaceTool = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	st.set_material(mat)
-	
-	var is_normal : bool = false
-	var is_tangent : bool = false
-	var is_color : bool = false
-	var is_uv : bool = false
-	var is_bones : bool = false
-	var is_bone_weights : bool = false
-	
+
+	var is_normal: bool = false
+	var is_tangent: bool = false
+	var is_color: bool = false
+	var is_uv: bool = false
+	var is_bones: bool = false
+	var is_bone_weights: bool = false
+
 	if unique_verts.size():
 		var n = unique_verts[0]
 		is_normal = mdt.get_vertex_normal(n) != Vector3()
@@ -203,7 +200,7 @@ static func _split_mesh(
 		is_uv = mdt.get_vertex_uv(n) != Vector2()
 		is_bones = mdt.get_vertex_bones(n).size()
 		is_bone_weights = mdt.get_vertex_weights(n).size()
-			
+
 	for u in unique_verts.size():
 		var n = unique_verts[u]
 
@@ -215,7 +212,6 @@ static func _split_mesh(
 		var bones = mdt.get_vertex_bones(n)
 		var bone_weights = mdt.get_vertex_weights(n)
 
-			
 		if is_normal:
 			st.set_normal(norm)
 		if is_color:
@@ -230,17 +226,17 @@ static func _split_mesh(
 			st.set_weights(bone_weights)
 
 		st.add_vertex(vert)
-	
+
 	for i in new_inds.size():
 		st.add_index(new_inds[i])
-	
+
 	st.generate_normals()
 	st.generate_tangents()
 	st.commit(tmpMesh)
 
-	var new_mi : MeshInstance3D = MeshInstance3D.new()
+	var new_mi: MeshInstance3D = MeshInstance3D.new()
 	new_mi.mesh = tmpMesh
-	
+
 	if new_mi.mesh.get_surface_count():
 		new_mi.set_surface_override_material(0, mat)
 
@@ -251,7 +247,7 @@ static func _split_mesh(
 	# add the new mesh as a child
 	attachment_node.add_child(new_mi, true)
 	new_mi.owner = attachment_node.owner
-	
+
 	if orig_mi.mesh and orig_mi.mesh.get_surface_count() - 1 == surface_id:
 		orig_mi.queue_free()
 
@@ -284,7 +280,7 @@ static func _calc_aabb(mesh_instance: MeshInstance3D):
 	# godot intersection doesn't work on borders ...
 	aabb = aabb.grow(0.1)
 	return aabb
-	
+
 
 static func _set_owner_recursive(node, owner):
 	if node != owner:
@@ -307,6 +303,6 @@ static func traverse_root_and_split(root : Node3D,
 	grid_size_y: float = 1.28) -> void:
 	var instances : Array[Node] = root.find_children("*", "MeshInstance3D")
 	for node in instances:
-		var mesh_instance : MeshInstance3D = node
+		var mesh_instance: MeshInstance3D = node
 		for surface_i in mesh_instance.mesh.get_surface_count():
 			split(mesh_instance, surface_i, mesh_instance.get_parent(), grid_size, grid_size_y)
