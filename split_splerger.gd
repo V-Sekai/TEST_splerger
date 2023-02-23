@@ -298,10 +298,9 @@ static func save_scene(node, filename):
 	packed_scene.pack(node)
 	ResourceSaver.save(packed_scene, filename)
 
-static func traverse_root_and_split(root : Node3D,
-	grid_size: float = 1.28,
-	grid_size_y: float = 1.28) -> void:
-	var instances : Array[Node] = root.find_children("*", "MeshInstance3D")
+
+static func traverse_root_and_split(root: Node3D, grid_size: float = 1.28, grid_size_y: float = 1.28) -> void:
+	var instances: Array[Node] = root.find_children("*", "MeshInstance3D")
 	for node in instances:
 		var mesh_instance: MeshInstance3D = node
 		for surface_i in mesh_instance.mesh.get_surface_count():
