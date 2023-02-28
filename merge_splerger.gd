@@ -105,7 +105,7 @@ static func merge_meshinstances(
 
 	# add the new mesh as a child
 	attachment_node.add_child(new_mi)
-	new_mi.owner = attachment_node
+	new_mi.owner = attachment_node.owner
 
 	if delete_originals:
 		for n in range(mesh_array.size()):
@@ -134,7 +134,6 @@ static func _merge_meshinstance(st: SurfaceTool, mi: MeshInstance3D, use_local_s
 		surface_tool.append_from(mesh, surface_i, Transform3D())
 	var mdt = MeshDataTool.new()
 	var new_mesh:ArrayMesh = surface_tool.commit()
-	new_mesh.lightmap_unwrap(Transform3D(), 1.0/2048.0 , true)
 	# only surface 0 for now
 	mdt.create_from_surface(surface_tool.commit(), 0)
 
@@ -157,17 +156,17 @@ static func _merge_meshinstance(st: SurfaceTool, mi: MeshInstance3D, use_local_s
 			norm = norm.normalized()
 		#	tang = xform.basis * tang
 
-			if norm:
-				st.set_normal(norm)
-			if col:
-				st.set_color(col)
-				if uv:
-					st.set_uv(uv)
-				# if uv2:
-				# 	st.set_uv2(uv2)
-				# if tang:
-				# 	st.set_tangent(tang)
-				st.add_vertex(vert)
+		if norm:
+			st.set_normal(norm)
+		if col:
+			st.set_color(col)
+		if uv:
+			st.set_uv(uv)
+		# if uv2:
+		# 	st.set_uv2(uv2)
+		# if tang:
+		# 	st.set_tangent(tang)
+		st.add_vertex(vert)
 
 		# indices
 		for f in nFaces:
