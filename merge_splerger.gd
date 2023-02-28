@@ -140,32 +140,42 @@ static func _merge_meshinstance(st: SurfaceTool, mi: MeshInstance3D, use_local_s
 	var nVerts = mdt.get_vertex_count()
 	var nFaces = mdt.get_face_count()
 
-	var xform = mi.global_transform
+	var xform = mi.transform
 
 	for n in nVerts:
-		var vert: Vector3 = mdt.get_vertex(n)
-		var norm: Vector3 = mdt.get_vertex_normal(n)
-		var col: Color = mdt.get_vertex_color(n)
-		var uv: Vector2 = mdt.get_vertex_uv(n)
-		var uv2 = mdt.get_vertex_uv2(n)
-		var tang = mdt.get_vertex_tangent(n)
+		var is_normal: bool = false
+		var is_tangent: bool = false
+		var is_color: bool = false
+		var is_uv: bool = false
+		var is_bones: bool = false
+		var is_bone_weights: bool = false
 
-		if use_local_space == false:
-			vert = xform * vert
-			norm = xform.basis * norm
-			norm = norm.normalized()
-			tang = Plane(xform.basis * tang.normal, tang.d)
+		is_normal = mdt.get_vertex_normal(n) != Vector3()
+		is_tangent = mdt.get_vertex_tangent(n) != Plane()
+		is_color = mdt.get_vertex_color(n) != Color()
+		is_uv = mdt.get_vertex_uv(n) != Vector2()
+		is_bones = mdt.get_vertex_bones(n).size()
+		is_bone_weights = mdt.get_vertex_weights(n).size()
 
-		if norm:
+		var vert = mdt.get_vertex(n)
+		if is_normal:
+			var norm = mdt.get_vertex_normal(n)
 			st.set_normal(norm)
-		if col:
+		if is_tangent:
+			var tangent = mdt.get_vertex_tangent(n)
+			st.set_tangent(tangent)
+		if is_color:
+			var col = mdt.get_vertex_color(n)
 			st.set_color(col)
-		if uv:
+		if is_uv:
+			var uv = mdt.get_vertex_uv(n)
 			st.set_uv(uv)
-		if uv2:
-			st.set_uv2(uv2)
-		if tang:
-			st.set_tangent(tang)
+		if is_bones:
+			var bones = mdt.get_vertex_bones(n)
+			st.set_bones(bones)
+			var bone_weights = mdt.get_vertex_weights(n)
+			st.set_weights(bone_weights)
+	
 		st.add_vertex(vert)
 
 		# indices

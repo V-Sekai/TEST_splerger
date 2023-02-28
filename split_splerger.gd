@@ -8,6 +8,7 @@ class _SplitInfo:
 	var x_splits: int = 0
 	var y_splits: int = 1
 	var z_splits: int = 0
+	var use_local_space : bool = false
 
 
 static func _get_num_splits_x(si: _SplitInfo) -> int:
@@ -41,11 +42,13 @@ static func split(
 	attachment_node: Node,
 	grid_size: float,
 	grid_size_y: float,
+	use_local_space: float,
 ):
 	# save all the info we can into a class to avoid passing it around
 	var si: _SplitInfo = _SplitInfo.new()
 	si.grid_size = grid_size
 	si.grid_size_y = grid_size_y
+	si.use_local_space = use_local_space
 
 	# calculate the AABB
 	si.aabb = _calc_aabb(mesh_instance)
@@ -176,6 +179,8 @@ static func _split_mesh(
 	for i in range(mdt.get_vertex_count()):
 		ind_mapping[i] = -1
 
+	var xform = orig_mi.global_transform
+	
 	for n in range(faces.size()):
 		var f = faces[n]
 		for i in range(3):
@@ -207,15 +212,22 @@ static func _split_mesh(
 		is_uv = mdt.get_vertex_uv(n) != Vector2()
 		is_bones = mdt.get_vertex_bones(n).size()
 		is_bone_weights = mdt.get_vertex_weights(n).size()
+		
 
 	for u in unique_verts.size():
 		var n = unique_verts[u]
 		var vert = mdt.get_vertex(n)
+		
 		if is_normal:
 			var norm = mdt.get_vertex_normal(n)
+			if si.use_local_space == false:
+				norm = xform.basis * norm
+				norm = norm.normalized()
 			st.set_normal(norm)
 		if is_tangent:
 			var tangent = mdt.get_vertex_tangent(n)
+			if si.use_local_space == false:
+				tangent = Plane(xform * tangent.normal, tangent.d)
 			st.set_tangent(tangent)
 		if is_color:
 			var col = mdt.get_vertex_color(n)
@@ -228,6 +240,8 @@ static func _split_mesh(
 			st.set_bones(bones)
 			var bone_weights = mdt.get_vertex_weights(n)
 			st.set_weights(bone_weights)
+		if si.use_local_space == false:
+			vert = xform * vert
 		st.add_vertex(vert)
 
 	for i in new_inds.size():
@@ -247,6 +261,10 @@ static func _split_mesh(
 
 	new_mi.skeleton = orig_mi.skeleton
 	new_mi.skin = orig_mi.skin
+	
+	if si.use_local_space:
+		new_mi.transform = orig_mi.transform
+	
 	# add the new mesh as a child
 	attachment_node.add_child(new_mi, true)
 	new_mi.owner = attachment_node.owner
@@ -303,8 +321,9 @@ static func save_scene(node, filename):
 
 
 static func traverse_root_and_split(root: Node3D, grid_size: float = 1.0, grid_size_y: float = 1.0) -> void:
+	var use_local_space: bool = true
 	var instances: Array[Node] = root.find_children("*", "MeshInstance3D")
 	for node in instances:
 		var mesh_instance: MeshInstance3D = node
 		for surface_i in mesh_instance.mesh.get_surface_count():
-			split(mesh_instance, surface_i, mesh_instance.get_parent(), grid_size, grid_size_y)
+			split(mesh_instance, surface_i, mesh_instance.get_parent(), grid_size, grid_size_y, use_local_space)
