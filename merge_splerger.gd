@@ -126,17 +126,17 @@ static func _merge_meshinstance(st: SurfaceTool, mi: MeshInstance3D, use_local_s
 		return vertex_count
 
 	print("merging meshinstance : " + mi.get_name())
-	var mesh = mi.mesh
+	var mesh: Mesh = mi.mesh
 	
 	var surface_tool: SurfaceTool = SurfaceTool.new()
 	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for surface_i in range(mesh.get_surface_count()):
 		surface_tool.append_from(mesh, surface_i, Transform3D())
 	var mdt = MeshDataTool.new()
-
+	var new_mesh:ArrayMesh = surface_tool.commit()
+	new_mesh.lightmap_unwrap(Transform3D(), 1.0/2048.0 , true)
 	# only surface 0 for now
-	var array_mesh: ArrayMesh = surface_tool.commit()
-	mdt.create_from_surface(array_mesh, 0)
+	mdt.create_from_surface(surface_tool.commit(), 0)
 
 	var nVerts = mdt.get_vertex_count()
 	var nFaces = mdt.get_face_count()
