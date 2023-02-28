@@ -241,14 +241,13 @@ static func _split_mesh(
 			var bone_weights = mdt.get_vertex_weights(n)
 			st.set_weights(bone_weights)
 		if si.use_local_space == false:
+			print(xform.origin)
 			vert = xform * vert
 		st.add_vertex(vert)
 
 	for i in new_inds.size():
 		st.add_index(new_inds[i])
-
-	st.generate_normals()
-	st.generate_tangents()
+		
 	st.commit(tmpMesh)
 
 	var new_mi: MeshInstance3D = MeshInstance3D.new()
