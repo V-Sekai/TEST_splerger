@@ -110,9 +110,10 @@ static func merge_meshinstances(
 	if delete_originals:
 		for n in range(mesh_array.size()):
 			var mi = mesh_array[n]
-			var parent = mi.get_parent()
-			if parent:
-				parent.remove_child(mi)
+			var node_3d_placeholder : Node3D = Node3D.new()
+			mi.replace_by(node_3d_placeholder, true)
+			node_3d_placeholder.transform = mi.transform
+			node_3d_placeholder.name = mi.name
 			mi.queue_free()
 
 	# return the new mesh instance as it can be useful to change transform
@@ -126,11 +127,16 @@ static func _merge_meshinstance(st: SurfaceTool, mi: MeshInstance3D, use_local_s
 
 	print("merging meshinstance : " + mi.get_name())
 	var mesh = mi.mesh
-
+	
+	var surface_tool: SurfaceTool = SurfaceTool.new()
+	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for surface_i in range(mesh.get_surface_count()):
+		surface_tool.append_from(mesh, surface_i, Transform3D())
 	var mdt = MeshDataTool.new()
 
 	# only surface 0 for now
-	mdt.create_from_surface(mesh, 0)
+	var array_mesh: ArrayMesh = surface_tool.commit()
+	mdt.create_from_surface(array_mesh, 0)
 
 	var nVerts = mdt.get_vertex_count()
 	var nFaces = mdt.get_face_count()
@@ -138,38 +144,38 @@ static func _merge_meshinstance(st: SurfaceTool, mi: MeshInstance3D, use_local_s
 	var xform = mi.global_transform
 
 	for n in nVerts:
-		var vert = mdt.get_vertex(n)
-		var norm = mdt.get_vertex_normal(n)
-		var col = mdt.get_vertex_color(n)
-		var uv = mdt.get_vertex_uv(n)
-#		var uv2 = mdt.get_vertex_uv2(n)
-#		var tang = mdt.get_vertex_tangent(n)
+		var vert: Vector3 = mdt.get_vertex(n)
+		var norm: Vector3 = mdt.get_vertex_normal(n)
+		var col: Color = mdt.get_vertex_color(n)
+		var uv: Vector2 = mdt.get_vertex_uv(n)
+		# var uv2 = mdt.get_vertex_uv2(n)
+		# var tang = mdt.get_vertex_tangent(n)
 
 		if use_local_space == false:
 			vert = xform * vert
 			norm = xform.basis * norm
 			norm = norm.normalized()
-#			tang = xform.basis * tang
+		#	tang = xform.basis * tang
 
-		if norm:
-			st.set_normal(norm)
-		if col:
-			st.set_color(col)
-		if uv:
-			st.set_uv(uv)
-#		if uv2:
-#			st.set_uv2(uv2)
-#		if tang:
-#			st.set_tangent(tang)
-		st.add_vertex(vert)
+			if norm:
+				st.set_normal(norm)
+			if col:
+				st.set_color(col)
+				if uv:
+					st.set_uv(uv)
+				# if uv2:
+				# 	st.set_uv2(uv2)
+				# if tang:
+				# 	st.set_tangent(tang)
+				st.add_vertex(vert)
 
-	# indices
-	for f in nFaces:
-		for i in range(3):
-			var ind = mdt.get_face_vertex(f, i)
+		# indices
+		for f in nFaces:
+			for i in range(3):
+				var ind = mdt.get_face_vertex(f, i)
 
-			# index must take into account the vertices of previously added meshes
-			st.add_index(ind + vertex_count)
+				# index must take into account the vertices of previously added meshes
+				st.add_index(ind + vertex_count)
 
 	# new running vertex count
 	return vertex_count + nVerts

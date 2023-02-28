@@ -73,7 +73,14 @@ static func split(
 	var mesh = mesh_instance.mesh
 
 	var mdt = MeshDataTool.new()
-	mdt.create_from_surface(mesh, surface_id)
+	
+	var surface_tool: SurfaceTool = SurfaceTool.new()
+	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for surface_i in range(mesh.get_surface_count()):
+		surface_tool.append_from(mesh, surface_i, Transform3D())
+	surface_tool.generate_normals()
+	surface_tool.generate_tangents()
+	mdt.create_from_surface(surface_tool.commit(), surface_id)
 
 	var nVerts = mdt.get_vertex_count()
 	if nVerts == 0:
@@ -203,28 +210,24 @@ static func _split_mesh(
 
 	for u in unique_verts.size():
 		var n = unique_verts[u]
-
 		var vert = mdt.get_vertex(n)
-		var norm = mdt.get_vertex_normal(n)
-		var tangent = mdt.get_vertex_tangent(n)
-		var col = mdt.get_vertex_color(n)
-		var uv = mdt.get_vertex_uv(n)
-		var bones = mdt.get_vertex_bones(n)
-		var bone_weights = mdt.get_vertex_weights(n)
-
 		if is_normal:
+			var norm = mdt.get_vertex_normal(n)
 			st.set_normal(norm)
+		if is_tangent:
+			var tangent = mdt.get_vertex_tangent(n)
+			st.set_tangent(tangent)
 		if is_color:
+			var col = mdt.get_vertex_color(n)
 			st.set_color(col)
 		if is_uv:
+			var uv = mdt.get_vertex_uv(n)
 			st.set_uv(uv)
-		if is_tangent:
-			print(tangent)
-			return
 		if is_bones:
+			var bones = mdt.get_vertex_bones(n)
 			st.set_bones(bones)
+			var bone_weights = mdt.get_vertex_weights(n)
 			st.set_weights(bone_weights)
-
 		st.add_vertex(vert)
 
 	for i in new_inds.size():
