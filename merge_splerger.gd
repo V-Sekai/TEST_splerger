@@ -147,14 +147,14 @@ static func _merge_meshinstance(st: SurfaceTool, mi: MeshInstance3D, use_local_s
 		var norm: Vector3 = mdt.get_vertex_normal(n)
 		var col: Color = mdt.get_vertex_color(n)
 		var uv: Vector2 = mdt.get_vertex_uv(n)
-		# var uv2 = mdt.get_vertex_uv2(n)
-		# var tang = mdt.get_vertex_tangent(n)
+		var uv2 = mdt.get_vertex_uv2(n)
+		var tang = mdt.get_vertex_tangent(n)
 
 		if use_local_space == false:
 			vert = xform * vert
 			norm = xform.basis * norm
 			norm = norm.normalized()
-		#	tang = xform.basis * tang
+			tang = Plane(xform.basis * tang.normal, tang.d)
 
 		if norm:
 			st.set_normal(norm)
@@ -162,10 +162,10 @@ static func _merge_meshinstance(st: SurfaceTool, mi: MeshInstance3D, use_local_s
 			st.set_color(col)
 		if uv:
 			st.set_uv(uv)
-		# if uv2:
-		# 	st.set_uv2(uv2)
-		# if tang:
-		# 	st.set_tangent(tang)
+		if uv2:
+			st.set_uv2(uv2)
+		if tang:
+			st.set_tangent(tang)
 		st.add_vertex(vert)
 
 		# indices
