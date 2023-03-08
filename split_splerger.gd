@@ -319,7 +319,7 @@ static func save_scene(node, filename):
 	ResourceSaver.save(packed_scene, filename)
 
 
-static func traverse_root_and_split(root: Node3D, grid_size: float = 1.0, grid_size_y: float = 1.0) -> void:
+static func traverse_root_and_split(root: Node3D, grid_size: float = 100.0, grid_size_y: float = 100.0) -> void:
 	var use_local_space: bool = true
 	var instances: Array[Node] = root.find_children("*", "MeshInstance3D")
 	for node in instances:
